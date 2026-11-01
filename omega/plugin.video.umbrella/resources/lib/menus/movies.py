@@ -231,9 +231,10 @@ class Movies:
 					if '/users/me/' not in url: raise Exception()
 					if '/collection/' in url: return self.traktCollection(url, folderName=folderName)
 					if '/watchlist/' in url: return self.traktWatchlist(url, folderName=folderName)
-					if trakt.getActivity() > cache.timeout(self.trakt_list, url, self.trakt_user, folderName):
-						self.list = cache.get(self.trakt_list, 0, url, self.trakt_user, folderName)
-					else: self.list = cache.get(self.trakt_list, 720, url, self.trakt_user, folderName)
+					activity = cache.get(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
+					if activity > cache.timeout(self.trakt_list, url, self.trakt_user, folderName):
+						self.list = cache.get_stale(self.trakt_list, 0, url, self.trakt_user, folderName)
+					else: self.list = cache.get_stale(self.trakt_list, 720, url, self.trakt_user, folderName)
 				except:
 					self.list = self.trakt_userList(url, create_directory=False)
 				if isTraktHistory and self.list:
@@ -241,13 +242,13 @@ class Movies:
 				if idx: self.worker()
 				if not isTraktHistory: self.sort()
 			elif u in self.trakt_link and self.search_link in url:
-				self.list = cache.get(self.trakt_list, 6, url, self.trakt_user, folderName)
+				self.list = cache.get_stale(self.trakt_list, 6, url, self.trakt_user, folderName)
 				if idx: self.worker()
 			elif u in self.trakt_link and 'trending' in url:
-				self.list = cache.get(self.trakt_list,self.trakttrending_hours, url, self.trakt_user, folderName) #trakt trending
+				self.list = cache.get_stale(self.trakt_list,self.trakttrending_hours, url, self.trakt_user, folderName) #trakt trending
 				if idx: self.worker()
 			elif u in self.trakt_link:
-				self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt other
+				self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt other
 				if idx: self.worker()
 			elif u in self.imdb_link and ('/user/' in url or '/list/' in url):
 				isRatinglink = False
@@ -566,11 +567,11 @@ class Movies:
 			try: url = getattr(self, url + '_link')
 			except: pass
 			if '/popular' in url:
-				self.list = cache.get(self.trakt_public_list, self.traktpopular_hours, url)
+				self.list = cache.get_stale(self.trakt_public_list, self.traktpopular_hours, url)
 			elif '/trending' in url:
-				self.list = cache.get(self.trakt_public_list, self.trakttrending_hours, url)
+				self.list = cache.get_stale(self.trakt_public_list, self.trakttrending_hours, url)
 			else:
-				self.list = cache.get(self.trakt_public_list, self.trakt_hours, url)
+				self.list = cache.get_stale(self.trakt_public_list, self.trakt_hours, url)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -1727,19 +1728,19 @@ class Movies:
 		genreslug = url
 		if listType == 'trending':
 			url = self.trakttrending_link +'&genres=%s&language=%s'% (genreslug, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt trending with genre
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt trending with genre
 		if listType == 'popular':
 			url = self.traktpopular_link +'&genres=%s&language=%s'% (genreslug, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt popular with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt popular with genre.
 		if listType =='mostplayed':
 			url =self.traktmostplayed_link +'&genres=%s&language=%s'% (genreslug, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostplayed with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostplayed with genre.
 		if listType == 'mostwatched':
 			url = self.traktmostwatched_link +'&genres=%s&language=%s'% (genreslug, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostwatched with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostwatched with genre.
 		if listType == 'anticipated':
 			url = self.traktanticipated_link +'&genres=%s&language=%s'% (genreslug, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt most anticipated with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt most anticipated with genre.
 		if listType == 'decades':
 			from resources.lib.menus import navigator
 			navigator.Navigator().trakt_decades(genre=genre, mediatype='Movies',url=url, folderName=folderName)
@@ -1778,16 +1779,16 @@ class Movies:
 			decades = '2020-2026'
 		if listType == 'trending':
 			url = self.trakttrending_link +'&genres=%s&years=%s&languages=%s'% (genreslug, decades, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt trending with genre
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt trending with genre
 		if listType == 'popular':
 			url = self.traktpopular_link+'&genres=%s&years=%s&languages=%s'% (genreslug, decades, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt popular with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt popular with genre.
 		if listType =='mostplayed':
 			url =self.traktmostplayed_link+'&genres=%s&years=%s&languages=%s'% (genreslug, decades, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostplayed with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostplayed with genre.
 		if listType == 'mostwatched':
 			url = self.traktmostwatched_link+'&genres=%s&years=%s&languages=%s'% (genreslug, decades, filterLang)
-			self.list = cache.get(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostwatched with genre.
+			self.list = cache.get_stale(self.trakt_list,self.trakt_hours, url, self.trakt_user, folderName) #trakt mostwatched with genre.
 		if self.list: self.worker()
 		if self.list: self.movieDirectory(self.list, folderName=folderName)
 		if self.list is None: self.list = []
@@ -1823,13 +1824,13 @@ class Movies:
 		userlists = []
 		try:
 			if not self.traktCredentials: raise Exception()
-			activity = trakt.getActivity()
+			activity = cache.get(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
 			self.list = [] ; lists = []
 			try:
 				if activity > cache.timeout(self.trakt_user_lists, self.traktlists_link, self.trakt_user): raise Exception()
-				lists += cache.get(self.trakt_user_lists, 720, self.traktlists_link, self.trakt_user)
+				lists += cache.get_stale(self.trakt_user_lists, 720, self.traktlists_link, self.trakt_user)
 			except:
-				lists += cache.get(self.trakt_user_lists, 0, self.traktlists_link, self.trakt_user)
+				lists += cache.get_stale(self.trakt_user_lists, 0, self.traktlists_link, self.trakt_user)
 			userlists += lists
 		except: pass
 		try:

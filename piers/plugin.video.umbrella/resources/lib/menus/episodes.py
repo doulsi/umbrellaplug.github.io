@@ -246,9 +246,9 @@ class Episodes:
 			try: api_url = getattr(self, base_url + '_link')
 			except: api_url = url
 			items = traktsync.fetch_bookmarks(imdb='', ret_all=True, ret_type='episodes')
-			if trakt.getPausedActivity() > cache.timeout(self.trakt_episodes_list, api_url, self.trakt_user, self.lang, items):
-				self.list = cache.get(self.trakt_episodes_list, 0, api_url, self.trakt_user, self.lang, items)
-			else: self.list = cache.get(self.trakt_episodes_list, self.trakt_unfinished_hours, api_url, self.trakt_user, self.lang, items)
+			if (cache.get(trakt.getPausedActivity, 1) or 0) > cache.timeout(self.trakt_episodes_list, api_url, self.trakt_user, self.lang, items):
+				self.list = cache.get_stale(self.trakt_episodes_list, 0, api_url, self.trakt_user, self.lang, items)
+			else: self.list = cache.get_stale(self.trakt_episodes_list, self.trakt_unfinished_hours, api_url, self.trakt_user, self.lang, items)
 			if self.list is None: self.list = []
 			self.list = sorted(self.list, key=lambda k: k['paused_at'], reverse=True)
 			if self.list and not self.showunaired:
@@ -682,9 +682,9 @@ class Episodes:
 			try: url = getattr(self, url + '_link')
 			except: pass
 			if self.trakt_link in url and url == self.progress_link:
-				if trakt.getProgressActivity() > cache.timeout(self.trakt_progress_list, url, self.trakt_user, self.lang, self.trakt_directProgressScrape, True):
-					self.list = cache.get(self.trakt_progress_list, 0, url, self.trakt_user, self.lang, self.trakt_directProgressScrape, True)
-				else: self.list = cache.get(self.trakt_progress_list, self.trakt_progress_hours, url, self.trakt_user, self.lang, self.trakt_directProgressScrape, True)
+				if (cache.get(trakt.getProgressActivity, 1) or 0) > cache.timeout(self.trakt_progress_list, url, self.trakt_user, self.lang, self.trakt_directProgressScrape, True):
+					self.list = cache.get_stale(self.trakt_progress_list, 0, url, self.trakt_user, self.lang, self.trakt_directProgressScrape, True)
+				else: self.list = cache.get_stale(self.trakt_progress_list, self.trakt_progress_hours, url, self.trakt_user, self.lang, self.trakt_directProgressScrape, True)
 				try:
 					hidden_prog = traktsync.fetch_hidden_progress()
 					hidden_tvdb_set = {str(i['tvdb']) for i in hidden_prog if i.get('tvdb')}
@@ -770,14 +770,14 @@ class Episodes:
 				page_limit = max(1, int(self.count) if self.count else 20)
 			if isProgressView or (self.trakt_link in str(url) and url == self.progress_link):
 				api_url = self.progress_link
-				if trakt.getProgressActivity() > cache.timeout(self.trakt_progress_list, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape):
-					self.list = cache.get(self.trakt_progress_list, 0, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
-				else: self.list = cache.get(self.trakt_progress_list, self.trakt_progress_hours, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
+				if (cache.get(trakt.getProgressActivity, 1) or 0) > cache.timeout(self.trakt_progress_list, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape):
+					self.list = cache.get_stale(self.trakt_progress_list, 0, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
+				else: self.list = cache.get_stale(self.trakt_progress_list, self.trakt_progress_hours, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
 				# Rebuild progress rows cached before full air-schedule enrichment.
 				if self.list and any(not i.get('airinfo_enriched') for i in self.list):
 					cache.remove(self.trakt_progress_list, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
 					self.list = []
-					self.list = cache.get(self.trakt_progress_list, 0, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
+					self.list = cache.get_stale(self.trakt_progress_list, 0, api_url, self.trakt_user, self.lang, self.trakt_directProgressScrape)
 				try:
 					hidden_prog = traktsync.fetch_hidden_progress()
 					hidden_tvdb_set = {str(i['tvdb']) for i in hidden_prog if i.get('tvdb')}
@@ -793,9 +793,9 @@ class Episodes:
 				sorted_list.extend([i for i in self.list if i not in top_items])
 				self.list = sorted_list
 			elif self.trakt_link in url and (url == self.mycalendarRecent_link) or (url == self.mycalendarUpcoming_link) or (url == self.mycalendarPremiers_link):
-				if trakt.getActivity() > cache.timeout(self.trakt_episodes_list, url, self.trakt_user, self.lang):
-					self.list = cache.get(self.trakt_episodes_list, 0, url, self.trakt_user, self.lang)
-				else: self.list = cache.get(self.trakt_episodes_list, 1, url, self.trakt_user, self.lang)
+				if (cache.get(trakt.getActivity, 1) or 0) > cache.timeout(self.trakt_episodes_list, url, self.trakt_user, self.lang):
+					self.list = cache.get_stale(self.trakt_episodes_list, 0, url, self.trakt_user, self.lang)
+				else: self.list = cache.get_stale(self.trakt_episodes_list, 1, url, self.trakt_user, self.lang)
 				try:
 					hidden_prog = traktsync.fetch_hidden_progress()
 					hidden_imdb = {str(i['imdb']) for i in hidden_prog if i.get('imdb')}
@@ -816,9 +816,9 @@ class Episodes:
 						for i in range(len(self.list)): self.list[i]['calendar_recent'] = True
 						self.list = sorted(self.list, key=lambda k: k['premiered'], reverse=True)
 			elif isTraktHistory:
-				if trakt.getActivity() > cache.timeout(self.trakt_episodes_list, url, self.trakt_user, self.lang):
-					self.list = cache.get(self.trakt_episodes_list, 0, url, self.trakt_user, self.lang)
-				else: self.list = cache.get(self.trakt_episodes_list, self.trakt_history_hours, url, self.trakt_user, self.lang)
+				if (cache.get(trakt.getActivity, 1) or 0) > cache.timeout(self.trakt_episodes_list, url, self.trakt_user, self.lang):
+					self.list = cache.get_stale(self.trakt_episodes_list, 0, url, self.trakt_user, self.lang)
+				else: self.list = cache.get_stale(self.trakt_episodes_list, self.trakt_history_hours, url, self.trakt_user, self.lang)
 				if self.list:
 					for i in range(len(self.list)): self.list[i]['traktHistory'] = True
 					self.list = sorted(self.list, key=lambda k: k['lastplayed'], reverse=True)

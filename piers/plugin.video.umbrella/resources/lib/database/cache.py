@@ -14,6 +14,7 @@ import xbmc
 import xbmcvfs
 import os
 import fnmatch
+import threading
 
 
 def get_coalesced(function, duration, *args):
@@ -98,6 +99,70 @@ def _is_cache_valid(cached_time, cache_timeout):
 	now = int(time())
 	diff = now - cached_time
 	return (cache_timeout * 3600) > diff
+
+_revalidate_lock = threading.Lock()
+_revalidating_keys = set()
+_last_auto_refresh = [0.0]
+
+def get_stale(function, duration, *args, refresh=True):
+	"""Stale-while-revalidate cache read.
+
+	Returns the on-disk cached value immediately, even when it is older than
+	``duration``. When the entry is stale, a background thread re-fetches and
+	rewrites the cache, then reloads the current container (only if the user
+	is still browsing that same listing) so the fresh data appears without
+	re-entering the menu. With no cached value at all there is nothing to
+	show yet, so it falls back to a synchronous get().
+	"""
+	try:
+		key = _hash_function(function, args)
+		cache_result = cache_get(key)
+		if cache_result:
+			try: result = literal_eval(cache_result['value'])
+			except: result = None
+			if _is_cache_valid(cache_result['date'], duration): return result
+			_schedule_revalidate(function, duration, args, key, refresh=refresh)
+			return result
+		return get(function, duration, *args)
+	except:
+		from resources.lib.modules import log_utils
+		log_utils.error()
+		return None
+
+def _schedule_revalidate(function, duration, args, key, refresh=True):
+	with _revalidate_lock:
+		if key in _revalidating_keys: return
+		_revalidating_keys.add(key)
+	try: folder = control.infoLabel('Container.FolderPath')
+	except: folder = ''
+	def work():
+		try:
+			if control.monitor.abortRequested(): return
+			get(function, duration, *args) # re-fetch and rewrite the cache entry
+			if refresh: _refresh_container_if_unchanged(folder)
+		except:
+			from resources.lib.modules import log_utils
+			log_utils.error()
+		finally:
+			with _revalidate_lock: _revalidating_keys.discard(key)
+	t = threading.Thread(target=work)
+	t.daemon = True
+	t.start()
+
+def _refresh_container_if_unchanged(folder):
+	# Only auto-reload when the user is still on the container that asked for
+	# the refresh, so a background revalidation never yanks them out of a
+	# deeper menu or a playing video.
+	try:
+		if not folder or not folder.startswith('plugin://'): return
+		if control.player.isPlaying(): return
+		if control.infoLabel('Container.FolderPath') != folder: return
+		now = time()
+		with _revalidate_lock:
+			if now - _last_auto_refresh[0] < 2: return
+			_last_auto_refresh[0] = now
+		control.refresh()
+	except: pass
 
 def timeout(function, *args):
 	try:
