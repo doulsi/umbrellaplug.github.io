@@ -1,4 +1,4 @@
-<addon id="plugin.video.umbrella" name="Umbrella" provider-name="Umbrella" version="6.7.99">
+<addon id="plugin.video.umbrella" name="Umbrella" provider-name="Umbrella" version="6.7.100">
 	<requires>
 		<import addon="xbmc.python" version="3.0.0" />
 		<import addon="script.module.requests" />
@@ -270,6 +270,8 @@
 			<screenshot>resources/screenshots/screenshot003.jpg</screenshot>
 		</assets>
 		<news>
+[B]Update - v6.7.100 - Nov 1st, 2026[/B]
+--[Fix] Trakt.tv lists now load instantly from cache and refresh in the background with an automatic list reload
 [B]Update - v6.7.99 - Oct 30th, 2026[/B]
 --[Fix] Fixed continuous playback stopping after multiple episodes and improved automatic Play Next reliability.
 --[Fix] Fixed episode queue issues, including duplicate episodes, interrupted playback, and manually queued episodes being lost.
