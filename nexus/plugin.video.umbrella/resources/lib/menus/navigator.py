@@ -59,7 +59,7 @@ class Navigator:
 			self.favoriteTVShows = False
 			self.favoriteEpisodes = False
 			return
-		self.hasLibMovies = len(jsloads(control.jsonrpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", "params": { "limits": { "start" : 0, "end": 1 }, "properties" : ["title", "genre", "uniqueid", "art", "rating", "thumbnail", "playcount", "file"] }, "id": "1"}'))['result']['movies']) > 0
+		self.hasLibMovies = None # lazy: probed on first has_lib_movies condition, cached 24h (see _eval_has_lib_movies)
 		self.favoriteMovie = favourites.checkForFavourites(content='movies')
 		self.favoriteTVShows = favourites.checkForFavourites(content='tvshows')
 		self.favoriteEpisodes = favourites.checkForFavourites(content='episode')
@@ -99,6 +99,17 @@ class Navigator:
 				len(control.listDir(getSetting('tv.download.path'))[0]) > 0)
 		return True
 
+	def _eval_has_lib_movies(self):
+		# The JSON-RPC library probe ran on every Navigator() construction, adding
+		# latency to each menu click. Probe lazily and stale-while-revalidate it.
+		if self.hasLibMovies is None:
+			from resources.lib.database import cache
+			self.hasLibMovies = bool(cache.get_stale(self._lib_movies_probe, 24))
+		return bool(self.hasLibMovies)
+
+	def _lib_movies_probe(self):
+		return len(jsloads(control.jsonrpc('{"jsonrpc": "2.0", "method": "VideoLibrary.GetMovies", "params": { "limits": { "start" : 0, "end" : 1 }, "properties" : ["title", "genre", "uniqueid", "art", "rating", "thumbnail", "playcount", "file"] }, "id": "1"}'))['result']['movies']) > 0
+
 	def _eval_condition_key(self, key, lite=False):
 		if key == 'not_lite':                return not lite
 		if key == 'simkl_token':             return bool(self.simkltoken)
@@ -121,7 +132,7 @@ class Navigator:
 		if key == 'scrob_with_indicators': return bool(self.scrobCredentials and (self.scrobIndicators or getSetting('scrob.markwatched') == 'true'))
 		if key == 'punchplay_with_indicators': return bool(self.punchplayCredentials and (self.punchplayIndicators or getSetting('punchplay.markwatched') == 'true'))
 		if key == 'tmdb_v4_token':           return bool(getSetting('tmdb.v4.accesstoken'))
-		if key == 'has_lib_movies':          return bool(self.hasLibMovies)
+		if key == 'has_lib_movies':          return self._eval_has_lib_movies()
 		if key == 'favorite_movie':          return bool(self.favoriteMovie)
 		if key == 'favorite_tvshows':        return bool(self.favoriteTVShows)
 		if key == 'favorite_episodes':       return bool(self.favoriteEpisodes)

@@ -231,7 +231,7 @@ class Movies:
 					if '/users/me/' not in url: raise Exception()
 					if '/collection/' in url: return self.traktCollection(url, folderName=folderName)
 					if '/watchlist/' in url: return self.traktWatchlist(url, folderName=folderName)
-					activity = cache.get(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
+					activity = cache.get_stale(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
 					if activity > cache.timeout(self.trakt_list, url, self.trakt_user, folderName):
 						self.list = cache.get_stale(self.trakt_list, 0, url, self.trakt_user, folderName)
 					else: self.list = cache.get_stale(self.trakt_list, 720, url, self.trakt_user, folderName)
@@ -252,15 +252,15 @@ class Movies:
 				if idx: self.worker()
 			elif u in self.imdb_link and ('/user/' in url or '/list/' in url):
 				isRatinglink = False
-				self.list = cache.get(self.imdb_list, 0, url, isRatinglink, folderName)
+				self.list = cache.get_stale(self.imdb_list, 0, url, isRatinglink, folderName)
 				if idx: self.worker()
 				# self.sort() # switched to request sorting for imdb
 			elif u in self.imdb_link:
 				if 'genres' in url:
-					self.list = cache.get(self.imdb_genre_list, self.imdblist_hours, url, folderName)
+					self.list = cache.get_stale(self.imdb_genre_list, self.imdblist_hours, url, folderName)
 				elif 'calendar' in url:
-					self.list = cache.get(self.imdb_list, self.imdblist_hours, url, True, folderName)
-				else: self.list = cache.get(self.imdb_genre_list, self.imdblist_hours, url, folderName)
+					self.list = cache.get_stale(self.imdb_list, self.imdblist_hours, url, True, folderName)
+				else: self.list = cache.get_stale(self.imdb_genre_list, self.imdblist_hours, url, folderName)
 				if idx: self.worker()
 			elif u in self.mbdlist_list_items:
 				self.list = self.mdb_list_items(url, create_directory=False)
@@ -323,7 +323,7 @@ class Movies:
 		self.list = []
 		try:
 
-			self.list = cache.get(self.mbd_top_lists, self.mdblist_hours)
+			self.list = cache.get_stale(self.mbd_top_lists, self.mdblist_hours)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -354,7 +354,7 @@ class Movies:
 	def getMDBOfficialLists(self, create_directory=True, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_official_lists, self.mdblist_hours)
+			self.list = cache.get_stale(self.mbd_official_lists, self.mdblist_hours)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -385,7 +385,7 @@ class Movies:
 	def getMDBUserList(self, create_directory=True, folderName='', addremove=False):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_user_lists, 0, addremove)
+			self.list = cache.get_stale(self.mbd_user_lists, 0, addremove)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -417,7 +417,7 @@ class Movies:
 	def getMDBLikedLists(self, create_directory=True, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_liked_lists, 0)
+			self.list = cache.get_stale(self.mbd_liked_lists, 0)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -504,7 +504,7 @@ class Movies:
 			except:
 				index = 0
 			listType = 'movie'
-			self.list = cache.get(mdblist.get_user_watchlist, 0, listType)
+			self.list = cache.get_stale(mdblist.get_user_watchlist, 0, listType)
 			if self.list is None: self.list = []
 			self.worker()
 			self.sort(type='movies.watchlist')
@@ -538,7 +538,7 @@ class Movies:
 			except:
 				index = 0
 			listType = 'movie'
-			self.list = cache.get(mdblist.get_user_collection, 0, listType)
+			self.list = cache.get_stale(mdblist.get_user_collection, 0, listType)
 			if self.list is None: self.list = []
 			self.worker()
 			self.sort(type='movies.watchlist')
@@ -753,7 +753,7 @@ class Movies:
 		self.list = []
 		try:
 			url = self.tmdb_recentday
-			self.list = cache.get(tmdb_indexer().tmdb_list, self.tmdbrecentday_hours, url)
+			self.list = cache.get_stale(tmdb_indexer().tmdb_list, self.tmdbrecentday_hours, url)
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
 			self.worker()
@@ -769,7 +769,7 @@ class Movies:
 		self.list = []
 		try:
 			url = self.tmdb_recentweek
-			self.list = cache.get(tmdb_indexer().tmdb_list, self.tmdbrecentweek_hours, url)
+			self.list = cache.get_stale(tmdb_indexer().tmdb_list, self.tmdbrecentweek_hours, url)
 			#self.list = tmdb_indexer().tmdb_list(url)
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
@@ -790,7 +790,7 @@ class Movies:
 			try: u = urlparse(url).netloc.lower()
 			except: pass
 			if u in self.simkltrendingweek_link or u in self.simkltrendingmonth_link or u in self.simkltrendingtoday_link:
-				self.list = cache.get(simkl.simkl_list, self.simkl_hours, url)
+				self.list = cache.get_stale(simkl.simkl_list, self.simkl_hours, url)
 			if self.list is None: self.list = []
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
@@ -808,7 +808,7 @@ class Movies:
 	def getAnime(self, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(simkl.simkl_anime_list, self.simkl_hours, 'movie', simkl._ANIME_TRENDING_MONTH)
+			self.list = cache.get_stale(simkl.simkl_anime_list, self.simkl_hours, 'movie', simkl._ANIME_TRENDING_MONTH)
 			if self.list is None: self.list = []
 			self.worker()
 			self.movieDirectory(self.list, folderName=folderName)
@@ -830,7 +830,7 @@ class Movies:
 			try: u = urlparse(url).netloc.lower()
 			except: pass
 			if u in self.simklcompleted_link:
-				self.list = cache.get(simkl.simklCompleted, self.simkl_hours, url)
+				self.list = cache.get_stale(simkl.simklCompleted, self.simkl_hours, url)
 			if self.list is None: self.list = []
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
@@ -853,7 +853,7 @@ class Movies:
 	# 		try: u = urlparse(url).netloc.lower()
 	# 		except: pass
 	# 		if u in self.simklplantowatch_link:
-	# 			self.list = cache.get(simkl.simklPlantowatch, self.simkl_hours, url)
+	# 			self.list = cache.get_stale(simkl.simklPlantowatch, self.simkl_hours, url)
 	# 		if self.list is None: self.list = []
 	# 		next = ''
 	# 		for i in range(len(self.list)): self.list[i]['next'] = next
@@ -1566,9 +1566,9 @@ class Movies:
 		control.execute('ActivateWindow(Videos,plugin://plugin.video.umbrella/?action=moviePersons&url=%s,return)' % (quote_plus(url)))
 
 	def persons(self, url, folderName=''):
-		if url is None: self.list = cache.get(self.imdb_person_list, 24, self.personlist_link)
+		if url is None: self.list = cache.get_stale(self.imdb_person_list, 24, self.personlist_link)
 
-		else: self.list = cache.get(self.imdb_person_list, 1, url)
+		else: self.list = cache.get_stale(self.imdb_person_list, 1, url)
 		if self.list is None: self.list = []
 		if self.list:
 			for i in range(0, len(self.list)): self.list[i].update({'content': 'actors', 'icon': 'DefaultActor.png', 'action': 'movies&folderName=%s' % quote_plus(self.list[i]['name'])})
@@ -1660,7 +1660,7 @@ class Movies:
 				getSetting('year.tmdb.minimumVotes'), language, countries)
 			return self.getTMDb(link, folderName=folderName)
 		try:
-			page = cache.get(movie_years.imdb_page, 6, year, state['sort'],
+			page = cache.get_stale(movie_years.imdb_page, 6, year, state['sort'],
 				movie_years.minimum_votes(getSetting('year.imdb.minimumVotes'), 10000),
 				language, countries, state.get('cursor', ''), self.page_limit)
 			if page is None: raise ValueError('IMDb year search unavailable')
@@ -1824,7 +1824,7 @@ class Movies:
 		userlists = []
 		try:
 			if not self.traktCredentials: raise Exception()
-			activity = cache.get(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
+			activity = cache.get_stale(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
 			self.list = [] ; lists = []
 			try:
 				if activity > cache.timeout(self.trakt_user_lists, self.traktlists_link, self.trakt_user): raise Exception()
@@ -1837,8 +1837,8 @@ class Movies:
 			if self.tmdb_session_id == '': raise Exception()
 			self.list = []
 			url = self.tmdb_link + '/3/account/{account_id}/lists?api_key=%s&language=en-US&session_id=%s&page=1' % ('%s', self.tmdb_session_id)
-			# lists = cache.get(tmdb_indexer.TMDb().userlists, 0, url)
-			lists = cache.get(tmdb_indexer().userlists, 0, url)
+			# lists = cache.get_stale(tmdb_indexer.TMDb().userlists, 0, url)
+			lists = cache.get_stale(tmdb_indexer().userlists, 0, url)
 			for i in range(len(lists)): lists[i].update({'image': 'tmdb.png', 'icon': 'DefaultVideoPlaylists.png', 'action': 'tmdbmovies&folderName=%s' % quote_plus(lists[i]['name'])})
 			userlists += lists
 		except: pass
@@ -3029,7 +3029,7 @@ class Movies:
 		_force_fresh = control.homeWindow.getProperty('umbrella.trakt.userlist.modified') == 'true'
 		if _force_fresh:
 			control.homeWindow.clearProperty('umbrella.trakt.userlist.modified')
-		self.list = cache.get(userList_totalItems, 0 if _force_fresh else self.traktuserlist_hours, url.split('?')[0] + '?extended=full')
+		self.list = cache.get_stale(userList_totalItems, 0 if _force_fresh else self.traktuserlist_hours, url.split('?')[0] + '?extended=full')
 		if not self.list: return
 		if int(getSetting('sort.movies.type') or '0') == 6:
 			watched_dates = trakt.getWatchedMoviesLastWatchedDates()
@@ -3275,7 +3275,7 @@ class Movies:
 		return self.list
 
 	def dvdReleaseList(self, create_directory=True, folderName=''):
-		self.list = cache.get(Movies().getDvdReleaseList, 96)
+		self.list = cache.get_stale(Movies().getDvdReleaseList, 96)
 		self.worker()
 		if self.list is None: self.list = []
 		if create_directory: self.movieDirectory(self.list, folderName=folderName)
@@ -3454,8 +3454,8 @@ class Movies:
 # #### -- Missing id's lookup -- ####
 # 			if not tmdb and imdb:
 # 				try:
-# 					# result = cache.get(tmdb_indexer.Movies().IdLookup, 96, imdb)
-# 					result = cache.get(tmdb_indexer().IdLookup, 96, imdb)
+# 					# result = cache.get_stale(tmdb_indexer.Movies().IdLookup, 96, imdb)
+# 					result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb)
 # 					tmdb = str(result.get('id', '')) if result.get('id') else ''
 # 				except: tmdb = ''
 # 			if not tmdb and imdb:
@@ -3548,7 +3548,7 @@ class Movies:
 			# Missing ID lookup
 			if not tmdb and imdb:
 				try:
-					result = cache.get(tmdb_indexer().IdLookup, 96, imdb)
+					result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb)
 					tmdb = str(result.get('id', '')) if result.get('id') else ''
 				except:
 					tmdb = ''

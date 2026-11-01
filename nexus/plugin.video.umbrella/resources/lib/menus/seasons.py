@@ -50,10 +50,10 @@ class Seasons:
 	def get(self, tvshowtitle, year, imdb, tmdb, tvdb, art, idx=True, create_directory=True): # may need to add a cache duration over-ride param to pass
 		self.list = []
 		if idx:
-			self.list = cache.get(self.tmdb_list, 720, tvshowtitle, imdb, tmdb, tvdb, art)
+			self.list = cache.get_stale(self.tmdb_list, 720, tvshowtitle, imdb, tmdb, tvdb, art)
 			if self.list:
 				if not self.list[0]['status'].lower() in ('ended', 'canceled'):
-					self.list = cache.get(self.tmdb_list, self.tmdblist_hours, tvshowtitle, imdb, tmdb, tvdb, art)
+					self.list = cache.get_stale(self.tmdb_list, self.tmdblist_hours, tvshowtitle, imdb, tmdb, tvdb, art)
 			if self.list is None: self.list = []
 			if create_directory: self.seasonDirectory(self.list)
 			return self.list
@@ -72,7 +72,7 @@ class Seasons:
 			if not tvdb: tvdb = str(trakt_ids.get('tvdb', '')) if trakt_ids.get('tvdb') else ''
 		if not tmdb and (imdb or tvdb):
 			try:
-				result = cache.get(tmdb_indexer().IdLookup, 96, imdb, tvdb)
+				result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb, tvdb)
 				tmdb = str(result.get('id')) if result else ''
 			except:
 				if getSetting('debug.level') != '1': return

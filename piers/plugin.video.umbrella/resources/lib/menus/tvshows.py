@@ -212,7 +212,7 @@ class TVshows:
 					if '/users/me/' not in url: raise Exception()
 					if '/collection/' in url: return self.traktCollection(url, folderName=folderName)
 					if '/watchlist/' in url: return self.traktWatchlist(url, folderName=folderName)
-					activity = cache.get(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
+					activity = cache.get_stale(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
 					if activity > cache.timeout(self.trakt_list, url, self.trakt_user, folderName):
 						self.list = cache.get_stale(self.trakt_list, 0, url, self.trakt_user, folderName)
 					else: self.list = cache.get_stale(self.trakt_list, 720, url, self.trakt_user, folderName)
@@ -230,11 +230,11 @@ class TVshows:
 				if idx: self.worker()
 			elif u in self.imdb_link and ('/user/' in url or '/list/' in url):
 				isRatinglink=False
-				self.list = cache.get(self.imdb_list, 0, url, isRatinglink, folderName)
+				self.list = cache.get_stale(self.imdb_list, 0, url, isRatinglink, folderName)
 				if idx: self.worker()
 				# self.sort() # switched to request sorting for imdb
 			elif u in self.imdb_link:
-				self.list = cache.get(self.imdb_genre_list, self.imdblist_hours, url, folderName)
+				self.list = cache.get_stale(self.imdb_genre_list, self.imdblist_hours, url, folderName)
 				if idx: self.worker()
 			elif u in self.mbdlist_list_items:
 				self.list = self.mdb_list_items(url, create_directory=False, folderName=folderName)
@@ -251,7 +251,7 @@ class TVshows:
 	def getMBDTopLists(self, create_directory=True, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_top_lists, self.mdblist_hours)
+			self.list = cache.get_stale(self.mbd_top_lists, self.mdblist_hours)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -260,7 +260,7 @@ class TVshows:
 	def getMDBOfficialLists(self, create_directory=True, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_official_lists, self.mdblist_hours)
+			self.list = cache.get_stale(self.mbd_official_lists, self.mdblist_hours)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -309,7 +309,7 @@ class TVshows:
 						current_url = next_url
 					self.list = all_items
 				else:
-					self.list = cache.get(tmdb_indexer().tmdb_collections_list, 0, url)
+					self.list = cache.get_stale(tmdb_indexer().tmdb_collections_list, 0, url)
 			elif u in self.tmdb_link and not is_collection_url:
 				self.list = tmdb_indexer().tmdb_list(url) # caching handled in list indexer
 			if self.list is None: self.list = []
@@ -335,7 +335,7 @@ class TVshows:
 			try: u = urlparse(url).netloc.lower()
 			except: pass
 			if u in self.simkltrendingweek_link or u in self.simkltrendingmonth_link or u in self.simkltrendingtoday_link:
-				self.list = cache.get(simkl.simkl_list, self.simkl_hours, url)
+				self.list = cache.get_stale(simkl.simkl_list, self.simkl_hours, url)
 			if self.list is None: self.list = []
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
@@ -352,7 +352,7 @@ class TVshows:
 	def getAnime(self, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(simkl.simkl_anime_list, self.simkl_hours, 'anime')
+			self.list = cache.get_stale(simkl.simkl_anime_list, self.simkl_hours, 'anime')
 			if self.list is None: self.list = []
 			self.worker()
 			self.tvshowDirectory(self.list, folderName=folderName)
@@ -369,7 +369,7 @@ class TVshows:
 		try:
 			try: url = getattr(self, url + '_link')
 			except: pass
-			self.list = cache.get(tvmaze.TVshows().tvmaze_list, 168, url)
+			self.list = cache.get_stale(tvmaze.TVshows().tvmaze_list, 168, url)
 			# if idx: self.worker() ## TVMaze has it's own full list builder.
 			if self.list is None: self.list = []
 			if idx: self.tvshowDirectory(self.list, folderName=folderName)
@@ -458,7 +458,7 @@ class TVshows:
 		try:
 			url = self.tmdb_recentday
 			#self.list = tmdb_indexer().tmdb_list(url)
-			self.list = cache.get(tmdb_indexer().tmdb_list,self.tmdbrecentday_hours, url)
+			self.list = cache.get_stale(tmdb_indexer().tmdb_list,self.tmdbrecentday_hours, url)
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
 			self.worker()
@@ -475,7 +475,7 @@ class TVshows:
 		try:
 			url = self.tmdb_recentweek
 			#self.list = tmdb_indexer().tmdb_list(url)
-			self.list = cache.get(tmdb_indexer().tmdb_list,self.tmdbrecentweek_hours, url)
+			self.list = cache.get_stale(tmdb_indexer().tmdb_list,self.tmdbrecentweek_hours, url)
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
 			self.worker()
@@ -491,7 +491,7 @@ class TVshows:
 		self.list = []
 		try:
 			url = self.tmdb_newshows
-			self.list = cache.get(tmdb_indexer().tmdb_list, self.tmdbrecentday_hours, url)
+			self.list = cache.get_stale(tmdb_indexer().tmdb_list, self.tmdbrecentday_hours, url)
 			next = ''
 			for i in range(len(self.list)): self.list[i]['next'] = next
 			self.worker()
@@ -855,8 +855,8 @@ class TVshows:
 		control.execute('ActivateWindow(Videos,plugin://plugin.video.umbrella/?action=tvPersons&url=%s,return)' % (quote_plus(url)))
 
 	def persons(self, url, folderName=''):
-		if url is None: self.list = cache.get(self.imdb_person_list, 24, self.personlist_link)
-		else: self.list = cache.get(self.imdb_person_list, 1, url)
+		if url is None: self.list = cache.get_stale(self.imdb_person_list, 24, self.personlist_link)
+		else: self.list = cache.get_stale(self.imdb_person_list, 1, url)
 		if self.list is None: self.list = []
 		if self.list:
 			for i in range(0, len(self.list)): self.list[i].update({'content': 'actors', 'icon': 'DefaultActor.png', 'action': 'tvshows&folderName=%s' % quote_plus(self.list[i]['name'])})
@@ -1030,7 +1030,7 @@ class TVshows:
 				movie_years.minimum_votes(getSetting('year.tv.tmdb.minimumVotes'), 20), language, countries, media='tv')
 			return self.getTMDb(link, folderName=folderName)
 		try:
-			page = cache.get(movie_years.imdb_page, 6, year, state['sort'],
+			page = cache.get_stale(movie_years.imdb_page, 6, year, state['sort'],
 				movie_years.minimum_votes(getSetting('year.tv.imdb.minimumVotes'), 1000),
 				language, countries, state.get('cursor', ''), self.page_limit, 'tv')
 			if page is None: raise ValueError('IMDb year search unavailable')
@@ -1089,7 +1089,7 @@ class TVshows:
 		userlists = []
 		try:
 			if not self.traktCredentials: raise Exception()
-			activity = cache.get(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
+			activity = cache.get_stale(trakt.getActivity, 1) or 0 # cache last_activities for 1h so entering the menu doesn't block on it
 			self.list = [] ; lists = []
 			try:
 				if activity > cache.timeout(self.trakt_user_lists, self.traktlists_link, self.trakt_user): raise Exception()
@@ -1101,7 +1101,7 @@ class TVshows:
 			if self.tmdb_session_id == '': raise Exception()
 			self.list = []
 			url = self.tmdb_link + '/3/account/{account_id}/lists?api_key=%s&language=en-US&session_id=%s&page=1' % ('%s', self.tmdb_session_id)
-			lists = cache.get(tmdb_indexer().userlists, 0, url)
+			lists = cache.get_stale(tmdb_indexer().userlists, 0, url)
 			for i in range(len(lists)): lists[i].update({'image': 'tmdb.png', 'icon': 'DefaultVideoPlaylists.png', 'action': 'tmdbTvshows'})
 			userlists += lists
 		except: pass
@@ -2019,7 +2019,7 @@ class TVshows:
 		_force_fresh = control.homeWindow.getProperty('umbrella.trakt.userlist.modified') == 'true'
 		if _force_fresh:
 			control.homeWindow.clearProperty('umbrella.trakt.userlist.modified')
-		self.list = cache.get(userList_totalItems, 0 if _force_fresh else self.traktuserlist_hours, url.split('?')[0] + '?extended=full')
+		self.list = cache.get_stale(userList_totalItems, 0 if _force_fresh else self.traktuserlist_hours, url.split('?')[0] + '?extended=full')
 		if not self.list: return
 		self.sort() # sort before local pagination
 		total_pages = 1
@@ -2214,7 +2214,7 @@ class TVshows:
 	def getMDBUserList(self, create_directory=True, folderName='', addremove=False):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_user_lists, 0, addremove)
+			self.list = cache.get_stale(self.mbd_user_lists, 0, addremove)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -2248,7 +2248,7 @@ class TVshows:
 	def getMDBLikedLists(self, create_directory=True, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.mbd_liked_lists, 0)
+			self.list = cache.get_stale(self.mbd_liked_lists, 0)
 			if self.list is None: self.list = []
 			if create_directory: self.addDirectory(self.list, folderName=folderName)
 			return self.list
@@ -2335,7 +2335,7 @@ class TVshows:
 			except:
 				index = 0
 			listType = 'tvshow'
-			self.list = cache.get(mdblist.get_user_watchlist, 0, listType)
+			self.list = cache.get_stale(mdblist.get_user_watchlist, 0, listType)
 			if self.list is None: self.list = []
 			self.worker()
 			self.sort(type='shows.watchlist')
@@ -2369,7 +2369,7 @@ class TVshows:
 			except:
 				index = 0
 			listType = 'tvshow'
-			self.list = cache.get(mdblist.get_user_collection, 0, listType)
+			self.list = cache.get_stale(mdblist.get_user_collection, 0, listType)
 			if self.list is None: self.list = []
 			self.worker()
 			self.sort(type='shows.watchlist')
@@ -2812,11 +2812,11 @@ class TVshows:
 					# Skip shows that are fully watched
 					watched_count = wc.get_watched_count_for_show(imdb_id)
 					try:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, '')
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, '')
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 						if tmdb_id:
 							values['tmdb'] = tmdb_id
-							seasons_meta = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+							seasons_meta = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 							total = sum(s.get('episode_count', 0) for s in (seasons_meta or {}).get('seasons', []) if s.get('season_number', 0) > 0)
 							if total and watched_count >= total: continue
 					except: pass
@@ -2902,7 +2902,7 @@ class TVshows:
 						if aired and completed >= aired: return  # fully watched, not "in progress"
 					if not tmdb:
 						try:
-							tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb, tvdb)
+							tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb, tvdb)
 							tmdb = str(tmdb_result.get('id', '')) if tmdb_result else ''
 						except: tmdb = ''
 					if not tmdb: return
@@ -2910,7 +2910,7 @@ class TVshows:
 						# no server-side progress data for this show yet — fall back to
 						# comparing local watched count against TMDb's total episode count
 						watched_count = sum(e - s + 1 for season, ranges in ep_ranges.items() if int(season) > 0 for s, e in ranges)
-						showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb)
+						showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb)
 						total = sum(s.get('episode_count', 0) for s in (showSeasons or {}).get('seasons', []) if s.get('season_number', 0) > 0)
 						if total and watched_count >= total: return
 					values = {}
@@ -3648,7 +3648,7 @@ class TVshows:
 				if not tvdb: tvdb = str(trakt_ids.get('tvdb', '')) if trakt_ids.get('tvdb') else ''
 			if not tmdb and (imdb or tvdb):
 				try:
-					result = cache.get(tmdb_indexer().IdLookup, 96, imdb, tvdb)
+					result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb, tvdb)
 					tmdb = str(result.get('id', '')) if result.get('id') else ''
 				except: tmdb = ''
 			if not imdb or not tmdb or not tvdb:

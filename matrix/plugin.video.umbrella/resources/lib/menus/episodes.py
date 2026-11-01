@@ -139,11 +139,11 @@ class Episodes:
 	def get(self, tvshowtitle, year, imdb, tmdb, tvdb, meta, season=None, episode=None, create_directory=True):
 		self.list = []
 		def get_episodes(tvshowtitle, imdb, tmdb, tvdb, meta, season):
-			episodes = cache.get(self.tmdb_list, 168, tvshowtitle, imdb, tmdb, tvdb, meta, season)
+			episodes = cache.get_stale(self.tmdb_list, 168, tvshowtitle, imdb, tmdb, tvdb, meta, season)
 			if not episodes: pass
 			elif episodes[0]['season_isAiring'] == 'true':
 				if int(re.sub(r'[^0-9]', '', str(episodes[0]['next_episode_to_air']['air_date']))) <= int(re.sub(r'[^0-9]', '', str(self.today_date))):
-					episodes = cache.get(self.tmdb_list, 3, tvshowtitle, imdb, tmdb, tvdb, meta, season)
+					episodes = cache.get_stale(self.tmdb_list, 3, tvshowtitle, imdb, tmdb, tvdb, meta, season)
 			all_episodes.extend(episodes)
 		try:
 			if season is None and episode is None: # for "flatten" setting
@@ -176,11 +176,11 @@ class Episodes:
 					from resources.lib.modules import log_utils
 					log_utils.error(f"Error processing episodes: {e}")
 			elif season and episode: # for "trakt progress-non direct progress scrape" setting
-				self.list = cache.get(self.tmdb_list, 168, tvshowtitle, imdb, tmdb, tvdb, meta, season)
+				self.list = cache.get_stale(self.tmdb_list, 168, tvshowtitle, imdb, tmdb, tvdb, meta, season)
 				if not self.list: pass
 				elif self.list[0]['season_isAiring'] == 'true':
 					if int(re.sub(r'[^0-9]', '', str(self.list[0]['next_episode_to_air']['air_date']))) <= int(re.sub(r'[^0-9]', '', str(self.today_date))):
-						self.list = cache.get(self.tmdb_list, 3, tvshowtitle, imdb, tmdb, tvdb, meta, season)
+						self.list = cache.get_stale(self.tmdb_list, 3, tvshowtitle, imdb, tmdb, tvdb, meta, season)
 				num = [x for x, y in enumerate(self.list) if y['season'] == int(season) and y['episode'] == int(episode)][-1]
 				self.list = [y for x, y in enumerate(self.list) if x >= num]
 				try:
@@ -223,11 +223,11 @@ class Episodes:
 						from resources.lib.modules import log_utils
 						log_utils.error(f"Error processing episodes: {e}")
 			else: # normal full episode list
-				self.list = cache.get(self.tmdb_list, 168, tvshowtitle, imdb, tmdb, tvdb, meta, season)
+				self.list = cache.get_stale(self.tmdb_list, 168, tvshowtitle, imdb, tmdb, tvdb, meta, season)
 				if not self.list: pass
 				elif self.list[0]['season_isAiring'] == 'true':
 					if int(re.sub(r'[^0-9]', '', str(self.list[0]['next_episode_to_air']['air_date']))) <= int(re.sub(r'[^0-9]', '', str(self.today_date))):
-						self.list = cache.get(self.tmdb_list, 3, tvshowtitle, imdb, tmdb, tvdb, meta, season)
+						self.list = cache.get_stale(self.tmdb_list, 3, tvshowtitle, imdb, tmdb, tvdb, meta, season)
 			if self.list is None: self.list = []
 			if create_directory: self.episodeDirectory(self.list)
 			return self.list
@@ -294,9 +294,9 @@ class Episodes:
 				return self.list
 			cache_key = 'mdblistunfinished'
 			if mdblist.getWatchedActivity() > cache.timeout(self.trakt_episodes_list, cache_key, self.trakt_user, self.lang, items):
-				self.list = cache.get(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
+				self.list = cache.get_stale(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
 			else:
-				self.list = cache.get(self.trakt_episodes_list, self.trakt_unfinished_hours, cache_key, self.trakt_user, self.lang, items)
+				self.list = cache.get_stale(self.trakt_episodes_list, self.trakt_unfinished_hours, cache_key, self.trakt_user, self.lang, items)
 			if self.list is None: self.list = []
 			self.list = sorted(self.list, key=lambda k: k['paused_at'], reverse=True)
 			try:
@@ -372,7 +372,7 @@ class Episodes:
 				if create_directory: self.episodeDirectory(self.list, unfinished=True, next=False, folderName=folderName)
 				return self.list
 			cache_key = 'floppyunfinished'
-			self.list = cache.get(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
+			self.list = cache.get_stale(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
 			if self.list is None: self.list = []
 			self.list = sorted(self.list, key=lambda k: k['paused_at'], reverse=True)
 			if self.list and not self.showunaired:
@@ -412,9 +412,9 @@ class Episodes:
 				return self.list
 			cache_key = 'customunfinished'
 			if customtrakt.getActivity() > cache.timeout(self.trakt_episodes_list, cache_key, self.trakt_user, self.lang, items):
-				self.list = cache.get(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
+				self.list = cache.get_stale(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
 			else:
-				self.list = cache.get(self.trakt_episodes_list, self.trakt_unfinished_hours, cache_key, self.trakt_user, self.lang, items)
+				self.list = cache.get_stale(self.trakt_episodes_list, self.trakt_unfinished_hours, cache_key, self.trakt_user, self.lang, items)
 			if self.list is None: self.list = []
 			self.list = sorted(self.list, key=lambda k: k['paused_at'], reverse=True)
 			if self.list and not self.showunaired:
@@ -480,7 +480,7 @@ class Episodes:
 				if create_directory: self.episodeDirectory(self.list, unfinished=True, next=False, folderName=folderName)
 				return self.list
 			cache_key = 'scrobunfinished'
-			self.list = cache.get(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
+			self.list = cache.get_stale(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
 			if self.list is None: self.list = []
 			self.list = sorted(self.list, key=lambda k: k['paused_at'], reverse=True)
 			if self.list and not self.showunaired:
@@ -520,7 +520,7 @@ class Episodes:
 				if create_directory: self.episodeDirectory(self.list, unfinished=True, next=False, folderName=folderName)
 				return self.list
 			cache_key = 'punchplayunfinished'
-			self.list = cache.get(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
+			self.list = cache.get_stale(self.trakt_episodes_list, 0, cache_key, self.trakt_user, self.lang, items)
 			if self.list is None: self.list = []
 			self.list = sorted(self.list, key=lambda k: k['paused_at'], reverse=True)
 			if self.list and not self.showunaired:
@@ -594,12 +594,12 @@ class Episodes:
 				try:
 					tvdb_id = ''
 					if not tmdb_id and imdb_id:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, '')
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, '')
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 						tvdb_id = str(tmdb_result.get('tvdb', '')) if tmdb_result else ''
 					if not tmdb_id:
 						return
-					showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+					showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 					if not showSeasons:
 						return
 					seasonEpisodes = tmdb_indexer().get_seasonEpisodes_meta_checked(tmdb_id, season)
@@ -834,9 +834,9 @@ class Episodes:
 			elif self.tvmaze_link in url and url == self.added_link:
 				urls = [i['url'] for i in self.calendars(idx=False)][:5]
 				self.list = []
-				for url in urls: self.list += cache.get(self.tvmaze_list, 720, url, True)
+				for url in urls: self.list += cache.get_stale(self.tvmaze_list, 720, url, True)
 			elif self.tvmaze_link in url:
-				self.list = cache.get(self.tvmaze_list, 1, url, False)
+				self.list = cache.get_stale(self.tvmaze_list, 1, url, False)
 			if self.list is None: self.list = []
 			if isProgressView and not self.progress_showunaired:
 				self.list = [i for i in self.list if i.get('unaired', '') != 'true']
@@ -880,14 +880,14 @@ class Episodes:
 			except: api_url = base_api_url
 			if '/sync/all-items/shows/watching' in api_url:
 				if simkl.getProgressActivity() > cache.timeout(self.simkl_progress_list, api_url, self.simkl_directProgressScrape):
-					self.list = cache.get(self.simkl_progress_list, 0, api_url, self.simkl_directProgressScrape)
-				else: self.list = cache.get(self.simkl_progress_list, min(self.simkl_hours, simkl.progress_cache_hours()), api_url, self.simkl_directProgressScrape)
+					self.list = cache.get_stale(self.simkl_progress_list, 0, api_url, self.simkl_directProgressScrape)
+				else: self.list = cache.get_stale(self.simkl_progress_list, min(self.simkl_hours, simkl.progress_cache_hours()), api_url, self.simkl_directProgressScrape)
 				# Rebuild progress rows cached before air-schedule enrichment.
 				from resources.lib.modules.episode_mapping import combined
 				if self.list and any(not i.get('airinfo_enriched') or (combined(i) and not i.get('anthology_mapping')) for i in self.list):
 					cache.remove(self.simkl_progress_list, api_url, self.simkl_directProgressScrape)
 					self.list = []
-					self.list = cache.get(self.simkl_progress_list, 0, api_url, self.simkl_directProgressScrape)
+					self.list = cache.get_stale(self.simkl_progress_list, 0, api_url, self.simkl_directProgressScrape)
 				self.sort(type='progress')
 				if self.list is None: self.list = []
 				# place new season ep1's at top of list for 1 week
@@ -1052,10 +1052,10 @@ class Episodes:
 				furthest_episode = max(e for (s, e) in candidates if s == furthest_season)
 				tmdb = tmdb_id
 				if not tmdb and imdb_id:
-					tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
+					tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
 					tmdb = str(tmdb_result.get('id')) if tmdb_result else ''
 				if not tmdb: return
-				showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb)
+				showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb)
 				if not showSeasons: return
 				seasons_meta = {s.get('season_number'): s for s in showSeasons.get('seasons', [])}
 				season_meta = seasons_meta.get(furthest_season)
@@ -1194,7 +1194,7 @@ class Episodes:
 		self.list = []
 		try:
 			recent_start = (self.date_time - timedelta(days=30)).strftime('%Y-%m-%d')
-			items = cache.get(self.mdblist_calendar_items, 1, 33, recent_start)
+			items = cache.get_stale(self.mdblist_calendar_items, 1, 33, recent_start)
 			self.list = self.trakt_episodes_list('mdblistcalendarrecent', self.trakt_user, self.lang, items=items)
 			if self.list:
 				self.list = [i for i in self.list if int(re.sub(r'[^0-9]', '', str(i['premiered']).split('T')[0])) <= int(re.sub(r'[^0-9]', '', str(self.today_date)))]
@@ -1213,7 +1213,7 @@ class Episodes:
 	def mdblist_calendar_upcoming(self, url, folderName=''):
 		self.list = []
 		try:
-			items = cache.get(self.mdblist_calendar_items, 1, 33)
+			items = cache.get_stale(self.mdblist_calendar_items, 1, 33)
 			self.list = self.trakt_episodes_list('mdblistcalendarupcoming', self.trakt_user, self.lang, items=items)
 			if self.list:
 				self.list = [i for i in self.list if int(re.sub(r'[^0-9]', '', str(i['premiered']).split('T')[0])) >= int(re.sub(r'[^0-9]', '', str(self.today_date)))]
@@ -1232,7 +1232,7 @@ class Episodes:
 	def mdblist_calendar_premieres(self, url, folderName=''):
 		self.list = []
 		try:
-			items = cache.get(self.mdblist_calendar_items, 1, 33)
+			items = cache.get_stale(self.mdblist_calendar_items, 1, 33)
 			self.list = self.trakt_episodes_list('mdblistcalendarpremieres', self.trakt_user, self.lang, items=items)
 			if self.list:
 				self.list = [i for i in self.list if i.get('episode') == 1 and
@@ -1252,7 +1252,7 @@ class Episodes:
 	def local_calendar(self, url, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.local_progress_list, 0, url)
+			self.list = cache.get_stale(self.local_progress_list, 0, url)
 			self.sort(type='progress')
 			if self.list is None: self.list = []
 			prior_week = int(re.sub(r'[^0-9]', '', (self.date_time - timedelta(days=7)).strftime('%Y-%m-%d')))
@@ -1307,10 +1307,10 @@ class Episodes:
 				try:
 					tmdb_id = i.get('tmdb', '')
 					if not tmdb_id:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, '')
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, '')
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 					if not tmdb_id: return
-					showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+					showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 					if not showSeasons: return
 					# Find the first unwatched episode in chronological order
 					next_season = None
@@ -1379,7 +1379,7 @@ class Episodes:
 	def custom_calendar(self, url, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.custom_progress_list, 0, url, self.custom_directProgressScrape)
+			self.list = cache.get_stale(self.custom_progress_list, 0, url, self.custom_directProgressScrape)
 			self.sort(type='progress')
 			if self.list is None: self.list = []
 			prior_week = int(re.sub(r'[^0-9]', '', (self.date_time - timedelta(days=7)).strftime('%Y-%m-%d')))
@@ -1404,7 +1404,7 @@ class Episodes:
 	def custom_upcoming_progress(self, url, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.custom_progress_list, 0, url, self.custom_directProgressScrape, True)
+			self.list = cache.get_stale(self.custom_progress_list, 0, url, self.custom_directProgressScrape, True)
 			if self.list:
 				self.list = sorted(self.list, key=lambda k: (k['premiered'] if k.get('premiered') else '3021-01-01', k.get('airtime', '')))
 			if self.list is None: self.list = []
@@ -1448,10 +1448,10 @@ class Episodes:
 					furthest_season = max(s for (s, e) in candidates)
 					furthest_episode = max(e for (s, e) in candidates if s == furthest_season)
 					if not tmdb_id and imdb_id:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 					if not tmdb_id: return
-					showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+					showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 					if not showSeasons: return
 					seasons_meta = {s.get('season_number'): s for s in showSeasons.get('seasons', [])}
 					season_meta = seasons_meta.get(furthest_season)
@@ -1564,7 +1564,7 @@ class Episodes:
 			except:
 				index = 0
 				page_limit = max(1, int(self.count) if self.count else 20)
-			self.list = cache.get(self.floppy_progress_list, 0, url, self.floppy_directProgressScrape)
+			self.list = cache.get_stale(self.floppy_progress_list, 0, url, self.floppy_directProgressScrape)
 			self.sort(type='progress')
 			if self.list is None: self.list = []
 			prior_week = int(re.sub(r'[^0-9]', '', (self.date_time - timedelta(days=7)).strftime('%Y-%m-%d')))
@@ -1603,7 +1603,7 @@ class Episodes:
 	def floppy_upcoming_progress(self, url, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.floppy_progress_list, 0, url, self.floppy_directProgressScrape, True)
+			self.list = cache.get_stale(self.floppy_progress_list, 0, url, self.floppy_directProgressScrape, True)
 			if self.list:
 				self.list = sorted(self.list, key=lambda k: (k['premiered'] if k.get('premiered') else '3021-01-01', k.get('airtime', '')))
 			if self.list is None: self.list = []
@@ -1654,10 +1654,10 @@ class Episodes:
 					furthest_season = max(s for (s, e) in candidates)
 					furthest_episode = max(e for (s, e) in candidates if s == furthest_season)
 					if not tmdb_id and imdb_id:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 					if not tmdb_id: return
-					showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+					showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 					if not showSeasons: return
 					seasons_meta = {s.get('season_number'): s for s in showSeasons.get('seasons', [])}
 					season_meta = seasons_meta.get(furthest_season)
@@ -1763,7 +1763,7 @@ class Episodes:
 			except:
 				index = 0
 				page_limit = max(1, int(self.count) if self.count else 20)
-			self.list = cache.get(self.scrob_progress_list, 0, url, self.scrob_directProgressScrape)
+			self.list = cache.get_stale(self.scrob_progress_list, 0, url, self.scrob_directProgressScrape)
 			self.sort(type='progress')
 			if self.list is None: self.list = []
 			prior_week = int(re.sub(r'[^0-9]', '', (self.date_time - timedelta(days=7)).strftime('%Y-%m-%d')))
@@ -1810,7 +1810,7 @@ class Episodes:
 			except:
 				index = 0
 				page_limit = max(1, int(self.count) if self.count else 20)
-			self.list = cache.get(self.punchplay_progress_list, 0, url, self.punchplay_directProgressScrape)
+			self.list = cache.get_stale(self.punchplay_progress_list, 0, url, self.punchplay_directProgressScrape)
 			self.sort(type='progress')
 			if self.list is None: self.list = []
 			prior_week = int(re.sub(r'[^0-9]', '', (self.date_time - timedelta(days=7)).strftime('%Y-%m-%d')))
@@ -1848,7 +1848,7 @@ class Episodes:
 	def scrob_upcoming_progress(self, url, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.scrob_progress_list, 0, url, self.scrob_directProgressScrape, True)
+			self.list = cache.get_stale(self.scrob_progress_list, 0, url, self.scrob_directProgressScrape, True)
 			if self.list:
 				self.list = sorted(self.list, key=lambda k: (k['premiered'] if k.get('premiered') else '3021-01-01', k.get('airtime', '')))
 			if self.list is None: self.list = []
@@ -1864,7 +1864,7 @@ class Episodes:
 	def punchplay_upcoming_progress(self, url, folderName=''):
 		self.list = []
 		try:
-			self.list = cache.get(self.punchplay_progress_list, 0, url, self.punchplay_directProgressScrape, True)
+			self.list = cache.get_stale(self.punchplay_progress_list, 0, url, self.punchplay_directProgressScrape, True)
 			if self.list:
 				self.list = sorted(self.list, key=lambda k: (k['premiered'] if k.get('premiered') else '3021-01-01', k.get('airtime', '')))
 			if self.list is None: self.list = []
@@ -1922,10 +1922,10 @@ class Episodes:
 				try:
 					next_season, next_episode = i.get('season'), i.get('episode')
 					if not tmdb_id and imdb_id:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 					if not tmdb_id: return
-					showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+					showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 					if not showSeasons: return
 					seasons_meta = {s.get('season_number'): s for s in showSeasons.get('seasons', [])}
 					if upcoming:
@@ -2054,10 +2054,10 @@ class Episodes:
 				try:
 					next_season, next_episode = i['season'], i['episode']
 					if not tmdb_id and imdb_id:
-						tmdb_result = cache.get(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
+						tmdb_result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb_id, i.get('tvdb', ''))
 						tmdb_id = str(tmdb_result.get('id')) if tmdb_result else ''
 					if not tmdb_id: return
-					showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
+					showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb_id)
 					if not showSeasons: return
 					seasons_meta = {s.get('season_number'): s for s in showSeasons.get('seasons', [])}
 					if next_season not in seasons_meta: return
@@ -2186,7 +2186,7 @@ class Episodes:
 		self.list = []
 		try:
 			recent_start = (self.date_time - timedelta(days=30)).strftime('%Y-%m-%d')
-			items = cache.get(self.custom_calendar_items, 1, 'shows', 33, recent_start)
+			items = cache.get_stale(self.custom_calendar_items, 1, 'shows', 33, recent_start)
 			self.list = self.trakt_episodes_list('customcalendarrecent', self.trakt_user, self.lang, items=items)
 			if self.list:
 				self.list = [i for i in self.list if int(re.sub(r'[^0-9]', '', str(i['premiered']).split('T')[0])) <= int(re.sub(r'[^0-9]', '', str(self.today_date)))]
@@ -2205,7 +2205,7 @@ class Episodes:
 	def custom_calendar_upcoming(self, url, folderName=''):
 		self.list = []
 		try:
-			items = cache.get(self.custom_calendar_items, 1, 'shows', 33)
+			items = cache.get_stale(self.custom_calendar_items, 1, 'shows', 33)
 			self.list = self.trakt_episodes_list('customcalendarupcoming', self.trakt_user, self.lang, items=items)
 			if self.list:
 				self.list = [i for i in self.list if int(re.sub(r'[^0-9]', '', str(i['premiered']).split('T')[0])) >= int(re.sub(r'[^0-9]', '', str(self.today_date)))]
@@ -2224,7 +2224,7 @@ class Episodes:
 	def custom_calendar_premieres(self, url, folderName=''):
 		self.list = []
 		try:
-			items = cache.get(self.custom_calendar_items, 1, 'shows', 33)
+			items = cache.get_stale(self.custom_calendar_items, 1, 'shows', 33)
 			self.list = self.trakt_episodes_list('customcalendarpremieres', self.trakt_user, self.lang, items=items)
 			if self.list:
 				self.list = [i for i in self.list if i.get('episode') == 1 and
@@ -2294,7 +2294,7 @@ class Episodes:
 	def tmdb_list(self, tvshowtitle, imdb, tmdb, tvdb, meta, season):
 		if not tmdb and (imdb or tvdb):
 			try:
-				result = cache.get(tmdb_indexer().IdLookup, 96, imdb, tvdb)
+				result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb, tvdb)
 				tmdb = str(result.get('id')) if result.get('id') else ''
 			except:
 				if getSetting('debug.level') != '1': return
@@ -2427,11 +2427,11 @@ class Episodes:
 			values['airinfo_enriched'] = True
 			if not tmdb and (imdb or tvdb):
 				try:
-					result = cache.get(tmdb_indexer().IdLookup, 96, imdb, tvdb)
+					result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb, tvdb)
 					values['tmdb'] = str(result.get('id', '')) if result.get('id') else ''
 				except: pass
 			try:
-				showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, 96, tmdb)
+				showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, 96, tmdb)
 				if not showSeasons: return
 				key = i['snum'] - 1 if showSeasons['seasons'][0]['season_number'] != 0 else i['snum']
 				try: next_episode_num = i['enum'] + 1 if showSeasons['seasons'][key]['episode_count'] > i['enum'] else 1
@@ -2631,7 +2631,7 @@ class Episodes:
 					values.update({'duration': int(duration)*60})
 				for k in ('episodes',): values.pop(k, None) # pop() keys from seasonEpisodes that are not needed anymore
 				try: # used for fanart fetch since not available in seasonEpisodes request
-					art = cache.get(tmdb_indexer().get_art, 96, tmdb)
+					art = cache.get_stale(tmdb_indexer().get_art, 96, tmdb)
 					values.update(art)
 				except: pass
 				if self.enable_fanarttv:
@@ -2675,7 +2675,7 @@ class Episodes:
 					values.update({'duration': int(duration)*60})
 				for k in ('episodes',): values.pop(k, None) # pop() keys from seasonEpisodes that are not needed anymore
 				try: # used for fanart fetch since not available in seasonEpisodes request
-					art = cache.get(tmdb_indexer().get_art, 96, tmdb)
+					art = cache.get_stale(tmdb_indexer().get_art, 96, tmdb)
 					values.update(art)
 				except: pass
 				if self.enable_fanarttv:
@@ -2760,7 +2760,7 @@ class Episodes:
 							tmdb = str(trakt_ids.get('tmdb', '')) if trakt_ids.get('tmdb') else ''
 					if not values['poster'] or not values['thumb']:
 						try:
-							art = cache.get(tmdb_indexer().get_art, 96, tmdb)
+							art = cache.get_stale(tmdb_indexer().get_art, 96, tmdb)
 							if not values['poster']: values['poster'] = art['poster3'] or ''
 							if not values['thumb']: values['thumb'] = art['fanart3'] or ''
 						except: pass
@@ -2831,14 +2831,14 @@ class Episodes:
 			values['airinfo_enriched'] = True
 			if not tmdb and (imdb or tvdb):
 				try:
-					result = cache.get(tmdb_indexer().IdLookup, 96, imdb, tvdb)
+					result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb, tvdb)
 					values['tmdb'] = str(result.get('id', '')) if result.get('id') else ''
 				except:
 					if getSetting('debug.level') == '1':
 						from resources.lib.modules import log_utils
 						return log_utils.log('tvshowtitle: (%s) missing tmdb_id: ids={imdb: %s, tmdb: %s, tvdb: %s}' % (i['tvshowtitle'], imdb, tmdb, tvdb), __name__, log_utils.LOGDEBUG) # log TMDb shows that they do not have
 			try:
-				showSeasons = cache.get(tmdb_indexer().get_showSeasons_meta, simkl.progress_cache_hours(), tmdb)
+				showSeasons = cache.get_stale(tmdb_indexer().get_showSeasons_meta, simkl.progress_cache_hours(), tmdb)
 				if not showSeasons: return
 				key = i['snum'] - 1 if showSeasons['seasons'][0]['season_number'] != 0 else i['snum']
 				try: next_episode_num = i['enum'] + 1 if showSeasons['seasons'][key]['episode_count'] > i['enum'] else 1
@@ -2846,7 +2846,7 @@ class Episodes:
 				next_season_num = i['snum'] if next_episode_num == i['enum'] + 1 else i['snum'] + 1
 				if next_season_num > showSeasons['total_seasons']: return
 				if not self.showspecials and next_season_num == 0: return
-				seasonEpisodes = cache.get(tmdb_indexer().get_seasonEpisodes_meta, simkl.progress_cache_hours(), tmdb, next_season_num)
+				seasonEpisodes = cache.get_stale(tmdb_indexer().get_seasonEpisodes_meta, simkl.progress_cache_hours(), tmdb, next_season_num)
 				if not seasonEpisodes: return
 				seasonEpisodes = dict((k,v) for k, v in iter(seasonEpisodes.items()) if v is not None and v != '') # remove empty keys so .update() doesn't over-write good meta with empty values.
 				try: episode_meta = [x for x in seasonEpisodes.get('episodes') if x.get('episode') == next_episode_num][0] # to pull just the episode meta we need

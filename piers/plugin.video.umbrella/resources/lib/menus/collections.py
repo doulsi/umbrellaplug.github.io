@@ -416,7 +416,7 @@ class Collections:
 				return self.list
 
 			elif u in self.imdb_link:
-				self.list = cache.get(self.imdb_list, self.imdblist_hours, url, folderName)
+				self.list = cache.get_stale(self.imdb_list, self.imdblist_hours, url, folderName)
 				self.worker()
 			if self.list is None: self.list = []
 			self.movieDirectory(self.list, folderName=folderName)
@@ -584,7 +584,7 @@ class Collections:
 #### -- Missing id's lookup -- ####
 			if not tmdb and imdb:
 				try:
-					result = cache.get(tmdb_indexer().IdLookup, 96, imdb)
+					result = cache.get_stale(tmdb_indexer().IdLookup, 96, imdb)
 					tmdb = str(result.get('id', '')) if result.get('id') else ''
 				except: tmdb = ''
 			if not tmdb and imdb:

@@ -189,7 +189,7 @@ class Movies(TMDb):
 
 	def tmdb_list(self, url):
 		try:
-			result = cache.get(self.get_request, self.tmdblist_hours, url % self.API_key)
+			result = cache.get_stale(self.get_request, self.tmdblist_hours, url % self.API_key)
 			if result is None: return
 			if '404:NOT FOUND' in result: return result
 			if 'person' in url:
@@ -272,7 +272,7 @@ class Movies(TMDb):
 				result = self.get_v4_request(url)
 			else:
 				fetch_url = url % self.API_key if '%s' in url else url
-				result = cache.get(self.get_request, self.tmdbcollection_hours, fetch_url)
+				result = cache.get_stale(self.get_request, self.tmdbcollection_hours, fetch_url)
 			if result is None: return
 			if isinstance(result, str) and '404:NOT FOUND' in result: return result
 			if '/collection/' in url: items = result['parts']
@@ -344,7 +344,7 @@ class Movies(TMDb):
 
 	def tmdb_collections_search(self, url):
 		try:
-			result = cache.get(self.get_request, self.tmdbcollection_hours, url)
+			result = cache.get_stale(self.get_request, self.tmdbcollection_hours, url)
 			if result is None: return
 			if '404:NOT FOUND' in result: return result
 			items = result['results']
@@ -617,7 +617,7 @@ class Movies(TMDb):
 		try:
 			url = kwargs.get('url')
 			from resources.lib.database import cache
-			art = cache.get(self.get_request, 10000, url)
+			art = cache.get_stale(self.get_request, 10000, url)
 			return art
 		except:
 			return None
@@ -648,7 +648,7 @@ class TVshows(TMDb):
 			else:
 				newurl = url % self.API_key
 
-			result = cache.get(self.get_request, self.tmdblist_hours, newurl)
+			result = cache.get_stale(self.get_request, self.tmdblist_hours, newurl)
 			if result is None: return
 			if '404:NOT FOUND' in result: return result
 			if 'person' in url:
@@ -1374,7 +1374,7 @@ class TVshows(TMDb):
 		try:
 			url = kwargs.get('url')
 			from resources.lib.database import cache
-			art = cache.get(self.get_request, 10000, url)
+			art = cache.get_stale(self.get_request, 10000, url)
 			return art
 		except:
 			return None
@@ -1388,7 +1388,7 @@ class TVshows(TMDb):
 		url = base_link + 'tv/%s/season/%s/episode/%s/images?api_key=%s' % (tmdb, season, episode, self.API_key)
 		try:
 			from resources.lib.database import cache
-			tmdbart = cache.get(self.get_request, 10000, url)
+			tmdbart = cache.get_stale(self.get_request, 10000, url)
 		except:
 			return None
 		if not tmdbart:
