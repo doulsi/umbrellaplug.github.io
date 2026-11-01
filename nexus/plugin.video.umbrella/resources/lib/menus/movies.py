@@ -3029,7 +3029,7 @@ class Movies:
 		_force_fresh = control.homeWindow.getProperty('umbrella.trakt.userlist.modified') == 'true'
 		if _force_fresh:
 			control.homeWindow.clearProperty('umbrella.trakt.userlist.modified')
-		self.list = cache.get_stale(userList_totalItems, 0 if _force_fresh else self.traktuserlist_hours, url.split('?')[0] + '?extended=full')
+		self.list = cache.get_stale(userList_totalItems, 0 if _force_fresh else self.traktuserlist_hours, url.split('?')[0] + '?extended=full', force=_force_fresh) # force bypasses the stale cache so a removed item cannot reappear
 		if not self.list: return
 		if int(getSetting('sort.movies.type') or '0') == 6:
 			watched_dates = trakt.getWatchedMoviesLastWatchedDates()
