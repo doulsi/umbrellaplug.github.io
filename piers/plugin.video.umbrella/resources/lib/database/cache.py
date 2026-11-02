@@ -103,24 +103,33 @@ def _is_cache_valid(cached_time, cache_timeout):
 _revalidate_lock = threading.Lock()
 _revalidating_keys = set()
 _last_auto_refresh = [0.0]
+_revalidate_context = threading.local()
 
-def get_stale(function, duration, *args, refresh=True):
+def get_stale(function, duration, *args, **kwargs):
 	"""Stale-while-revalidate cache read.
 
 	Returns the on-disk cached value immediately, even when it is older than
 	``duration``. When the entry is stale, a background thread re-fetches and
-	rewrites the cache, then reloads the current container (only if the user
-	is still browsing that same listing) so the fresh data appears without
-	re-entering the menu. With no cached value at all there is nothing to
-	show yet, so it falls back to a synchronous get().
+	rewrites the cache, then reloads the current container (only when the
+	request verifiably came from the visible listing and the user is still on
+	it) so fresh data appears without re-entering the menu. Entries cached
+	with a duration of 0 are refreshed synchronously and never trigger an
+	automatic refresh. With no cached value at all there is nothing to show
+	yet, so it falls back to a synchronous get().
 	"""
+	force = kwargs.pop('force', False)
+	refresh = kwargs.pop('refresh', True)
 	try:
+		if force: return get(function, duration, *args) # forced updates must never return cached data
 		key = _hash_function(function, args)
 		cache_result = cache_get(key)
 		if cache_result:
 			try: result = literal_eval(cache_result['value'])
 			except: result = None
 			if _is_cache_valid(cache_result['date'], duration): return result
+			if duration <= 0: return get(function, duration, *args) # duration 0 means always-fresh: no stale reads, no refresh loop
+			if getattr(_revalidate_context, 'active', False):
+				return get(function, duration, *args) # nested inside a background revalidate: fetch fresh so the outer entry cannot store stale data under a fresh timestamp
 			_schedule_revalidate(function, duration, args, key, refresh=refresh)
 			return result
 		return get(function, duration, *args)
@@ -129,40 +138,149 @@ def get_stale(function, duration, *args, refresh=True):
 		log_utils.error()
 		return None
 
-def _schedule_revalidate(function, duration, args, key, refresh=True):
+def _coordination_db():
+	if not control.existsPath(control.dataPath): control.makeFile(control.dataPath)
+	return db.connect(control.cacheFile + '.revalidate', timeout=0.25)
+
+def _claim_revalidate(key):
+	# Dedup across separate Kodi plugin invocations through a shared sqlite
+	# db, so two processes never revalidate the same key at once. The claim
+	# expires so a crashed invocation cannot block revalidation forever.
 	with _revalidate_lock:
-		if key in _revalidating_keys: return
+		if key in _revalidating_keys: return False
 		_revalidating_keys.add(key)
-	try: folder = control.infoLabel('Container.FolderPath')
-	except: folder = ''
+	try:
+		con = _coordination_db()
+		try:
+			con.execute('CREATE TABLE IF NOT EXISTS claims (key TEXT PRIMARY KEY, claimed REAL)')
+			while True:
+				try:
+					con.execute('BEGIN IMMEDIATE')
+					break
+				except db.OperationalError as exc:
+					if 'locked' not in str(exc).lower() and 'busy' not in str(exc).lower(): raise
+					if control.monitor.waitForAbort(0.1):
+						with _revalidate_lock: _revalidating_keys.discard(key)
+						return False
+			now = time()
+			row = con.execute('SELECT claimed FROM claims WHERE key=?', (key,)).fetchone()
+			if row and now - row[0] < 300:
+				con.rollback()
+				with _revalidate_lock: _revalidating_keys.discard(key)
+				return False
+			con.execute('INSERT OR REPLACE INTO claims VALUES (?, ?)', (key, now))
+			con.commit()
+			return True
+		finally:
+			con.close()
+	except:
+		return True # coordination db unavailable: the in-process lock still dedups
+
+def _release_revalidate(key):
+	try:
+		con = _coordination_db()
+		try:
+			con.execute('DELETE FROM claims WHERE key=?', (key,))
+			con.commit()
+		finally:
+			con.close()
+	except: pass
+
+def _schedule_revalidate(function, duration, args, key, refresh=True):
+	if not _claim_revalidate(key): return
+	folder = _current_listing_folder()
 	def work():
 		try:
 			if control.monitor.abortRequested(): return
-			get(function, duration, *args) # re-fetch and rewrite the cache entry
-			if refresh: _refresh_container_if_unchanged(folder)
+			_revalidate_context.active = True
+			changed = _fetch_if_changed(function, duration, args, key)
+			if refresh and changed: _refresh_container_if_unchanged(folder)
 		except:
 			from resources.lib.modules import log_utils
 			log_utils.error()
 		finally:
+			_revalidate_context.active = False
 			with _revalidate_lock: _revalidating_keys.discard(key)
+			_release_revalidate(key)
 	t = threading.Thread(target=work)
 	t.daemon = True
 	t.start()
 
-def _refresh_container_if_unchanged(folder):
-	# Only auto-reload when the user is still on the container that asked for
-	# the refresh, so a background revalidation never yanks them out of a
-	# deeper menu or a playing video.
+def _fetch_if_changed(function, duration, args, key):
+	# Re-fetch and rewrite the cache, but report whether the stored value
+	# actually changed, so failed requests (get() returns None or keeps the
+	# old entry) never trigger a container refresh.
 	try:
-		if not folder or not folder.startswith('plugin://'): return
+		cached = cache_get(key)
+		cached_value = cached['value'] if cached else None
+		fresh = get(function, duration, *args) # re-fetch; get() skips the write when the response is empty or failed
+		if fresh is None: return False
+		rewritten = cache_get(key)
+		if not rewritten: return False
+		return rewritten['value'] != cached_value
+	except:
+		from resources.lib.modules import log_utils
+		log_utils.error()
+		return False
+
+def _current_listing_folder():
+	# A plugin:// FolderPath alone does not prove the request came from the
+	# visible listing: skin widgets also use plugin:// URLs but have no
+	# plugin container and are not shown in the videos window. Require both.
+	try:
+		if 'plugin.video.umbrella' not in (control.infoLabel('Container.PluginName') or ''): return ''
+		if not control.condVisibility('Window.IsActive(videos) or Window.IsActive(MyVideoNav.xml)'): return ''
+		folder = control.infoLabel('Container.FolderPath')
+		if folder and folder.startswith('plugin://plugin.video.umbrella/'): return folder
+	except: pass
+	return ''
+
+def _refresh_container_if_unchanged(folder):
+	# Only auto-reload when the user is still on the exact listing that asked
+	# for the refresh, so a background revalidation never yanks them out of a
+	# deeper menu, a playing video, or a skin widget.
+	try:
+		if not folder: return
 		if control.player.isPlaying(): return
 		if control.infoLabel('Container.FolderPath') != folder: return
-		now = time()
-		with _revalidate_lock:
-			if now - _last_auto_refresh[0] < 2: return
-			_last_auto_refresh[0] = now
+		if not control.condVisibility('Window.IsActive(videos) or Window.IsActive(MyVideoNav.xml)'): return
+		if not _throttled_auto_refresh(): return
 		control.refresh()
 	except: pass
+
+def _throttled_auto_refresh():
+	# Two-second throttle shared across separate Kodi invocations through the
+	# coordination db, with the in-process timestamp as first line of defense.
+	now = time()
+	with _revalidate_lock:
+		if now - _last_auto_refresh[0] < 2: return False
+		_last_auto_refresh[0] = now
+	try:
+		con = _coordination_db()
+		try:
+			con.execute('CREATE TABLE IF NOT EXISTS auto_refresh (id INTEGER PRIMARY KEY, at REAL)')
+			con.execute('BEGIN IMMEDIATE')
+			row = con.execute('SELECT at FROM auto_refresh WHERE id=1').fetchone()
+			if row and now - row[0] < 2:
+				con.rollback()
+				return False
+			con.execute('INSERT OR REPLACE INTO auto_refresh VALUES (1, ?)', (now,))
+			con.commit()
+			return True
+		finally:
+			con.close()
+	except:
+		return True
+
+def invalidate_lib_movies_probe():
+	# Drop the cached VideoLibrary.GetMovies probe when the library changes;
+	# without this the has_lib_movies menu condition could stay stale for 24h.
+	try:
+		from resources.lib.menus.navigator import Navigator
+		remove(Navigator._lib_movies_probe)
+	except:
+		from resources.lib.modules import log_utils
+		log_utils.error()
 
 def timeout(function, *args):
 	try:

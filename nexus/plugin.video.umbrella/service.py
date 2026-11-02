@@ -132,6 +132,17 @@ class SettingsMonitor(control.monitor_class):
 		except Exception:
 			log_utils.error()
 
+	def onNotification(self, sender, method, data):
+		# Library add/remove changes the answer of the cached has_lib_movies
+		# probe; drop it so the menu condition reflects the change immediately
+		# instead of up to 24h later.
+		if method in ('VideoLibrary.OnUpdate', 'VideoLibrary.OnRemove', 'VideoLibrary.OnScanFinished'):
+			try:
+				from resources.lib.database import cache
+				cache.invalidate_lib_movies_probe()
+			except Exception:
+				log_utils.error()
+
 class SyncMyAccounts:
 	def run(self):
 		control.log('[ plugin.video.umbrella ]  Sync Accounts with Scraper Starting...', LOGINFO)
