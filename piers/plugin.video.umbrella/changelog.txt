@@ -1,3 +1,5 @@
+[B]Update - v6.7.101 - Nov 2nd, 2026[/B]
+--[Fix] Stale-while-revalidate review fixes (PR #1, merge 6c57402): no refresh loops for duration-0 caches, no refresh on failed requests, nested-cache freshness, widget protection, cross-invocation dedup/throttle, force_fresh bypass, library probe invalidation
 [B]Update - v6.7.99 - Oct 30th, 2026[/B]
 --[Fix] Fixed continuous playback stopping after multiple episodes and improved automatic Play Next reliability.
 --[Fix] Fixed episode queue issues, including duplicate episodes, interrupted playback, and manually queued episodes being lost.
